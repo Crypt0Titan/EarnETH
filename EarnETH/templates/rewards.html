@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6 text-white text-center">ERNETH Rewards</h1> <!-- Centered heading -->
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <a href="{{ url_for('main.user_stats') }}" class="neon-button text-white">User Stats</a>
+    </div>
+    <a href="{{ url_for('admin.admin_logout') }}" class="btn bg-transparent hover:bg-gray-600 text-white">Logout</a>
+</div>
+
+<div class="bg-gray-800 p-4 rounded shadow-md mb-6"> <!-- Container for Total Rewards -->
+    <h2 class="text-2xl font-bold mb-4 text-white">Total Rewards</h2>
+    <p class="text-lg text-white">$10,000</p> <!-- Display the total rewards -->
+</div>
+{% endblock %}

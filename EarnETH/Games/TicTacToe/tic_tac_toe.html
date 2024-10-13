@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="futuristic-container">
+    <h1 class="text-5xl font-bold text-center text-white mb-4">Tic Tac Toe</h1>
+    <h2 class="text-3xl font-bold text-center neon-text mb-6">Compete and Earn ETH!</h2>
+
+    <div class="game-wrapper">
+        <div class="player-container">
+            <img id="player1Icon" class="player-icon" src="{{ url_for('static', filename='player not connected.png') }}" alt="Player 1 Icon">
+            <p class="text-center text-xl neon-text">Player 1</p>
+        </div>
+        
+        <div id="gameBoard">
+            <canvas id="ticTacToeCanvas" width="400" height="400"></canvas>
+            <div id="startMessage" class="hidden">Both players are ready! Game starts in <span id="countdown">10</span> seconds!</div>
+        </div>
+        
+        <div class="player-container">
+            <img id="player2Icon" class="player-icon" src="{{ url_for('static', filename='player not connected.png') }}" alt="Player 2 Icon">
+            <p class="text-center text-xl neon-text">Player 2</p>
+        </div>
+    </div>
+
+    <div id="gameStatus" class="hidden text-center neon-text mt-4">Game in Progress...</div>
+    
+    <div class="text-center mt-6">
+        <button id="connectWallet" class="neon-button">Connect Wallet</button>
+        <p id="walletStatus" class="mt-2 text-white"></p>
+        <button id="readyButton" class="neon-button hidden">I'm Ready!</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #121212;
+    }
+    .futuristic-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .game-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 80%;
+    }
+    #gameBoard {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    #ticTacToeCanvas {
+        border: 2px solid var(--neon-color);
+        background-color: #1E1E1E;
+    }
+    .player-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0 10px;
+    }
+    .player-icon {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 10px;
+    }
+    .neon-button {
+        font-size: 18px;
+        padding: 10px 20px;
+        background-color: var(--neon-color);
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .neon-button:hover {
+        background-color: #3182ce;
+    }
+    .neon-text {
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const canvas = document.getElementById('ticTacToeCanvas');
+    const ctx = canvas.getContext('2d');
+    const connectWalletBtn = document.getElementById('connectWallet');
+    const walletStatusDisplay = document.getElementById('walletStatus');
+    const readyButton = document.getElementById('readyButton');
+    const startMessage = document.getElementById('startMessage');
+    const countdownElement = document.getElementById('countdown');
+    const gameStatus = document.getElementById('gameStatus');
+    const player1Icon = document.getElementById('player1Icon');
+    const player2Icon = document.getElementById('player2Icon');
+    let walletAddress = '';
+    let walletConnected = false;
+    let playerReady = false;
+    let player1Ready = false;
+    let player2Ready = false;
+    let countdown;
+
+    // Tic Tac Toe game setup
+    function drawBoard() {
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(133, 0);
+        ctx.lineTo(133, 400);
+        ctx.moveTo(267, 0);
+        ctx.lineTo(267, 400);
+        ctx.moveTo(0, 133);
+        ctx.lineTo(400, 133);
+        ctx.moveTo(0, 267);
+        ctx.lineTo(400, 267);
+        ctx.stroke();
+    }
+
+    // Simulate player ready and game countdown
+    function handleReady() {
+        playerReady = true;
+        readyButton.classList.add('hidden');
+        if (player1Ready && player2Ready) {
+            startCountdown();
+        }
+    }
+
+    // Start the game countdown
+    function startCountdown() {
+        startMessage.classList.remove('hidden');
+        let timeLeft = 10;
+        countdown = setInterval(() => {
+            timeLeft--;
+            countdownElement.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                startMessage.classList.add('hidden');
+                gameStatus.classList.remove('hidden');
+                startGame();
+            }
+        }, 1000);
+    }
+
+    // Wallet connection logic
+    async function connectWallet() {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                walletAddress = accounts[0];
+                walletStatusDisplay.textContent = `Connected: ${walletAddress}`;
+                connectWalletBtn.style.display = 'none';
+                walletConnected = true;
+                player1Icon.src = "{{ url_for('static', filename='player connected.png') }}"; // Update Player 1 icon to connected
+                readyButton.classList.remove('hidden');
+            } catch (error) {
+                walletStatusDisplay.textContent = 'Error connecting wallet. Please try again.';
+            }
+        } else {
+            walletStatusDisplay.textContent = 'MetaMask is not installed. Please install it to connect your wallet.';
+        }
+    }
+
+    connectWalletBtn.addEventListener('click', connectWallet);
+    readyButton.addEventListener('click', handleReady);
+
+    function startGame() {
+        // Game logic starts here
+        drawBoard();
+    }
+
+    // Initial setup
+    drawBoard();
+</script>
+{% endblock %}

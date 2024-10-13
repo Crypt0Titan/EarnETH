@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="futuristic-container">
+    <h1 class="text-5xl font-bold text-center text-white mb-4">Flappy ETH</h1>
+    <h2 class="text-3xl font-bold text-center neon-text mb-6">Fly Through the Blockchain to Earn $ETH!</h2>
+
+    <div id="rankDisplay" class="hidden neon-button mb-8">Rank: --</div>
+
+    <div class="game-wrapper">
+        <div id="gameContainer">
+            <div id="canvasWrapper">
+                <canvas id="gameCanvas" width="624" height="520"></canvas>
+                <div id="startMessage" class="hidden">Press Space to Start</div>
+            </div>
+            <div id="score" class="mt-4 text-2xl neon-text">Score: 0</div>
+            <button id="connectWallet" class="mt-4 neon-button">Connect Wallet</button>
+            <p id="walletStatus" class="mt-2 text-white"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #121212;
+    }
+    .futuristic-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .game-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+    #canvasWrapper {
+        position: relative;
+        display: inline-block;
+    }
+    #gameCanvas {
+        border: 2px solid var(--neon-color);
+        background-color: #1E1E1E;
+    }
+    #startMessage {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .neon-button {
+        font-size: 18px;
+        padding: 10px 20px;
+        background-color: var(--neon-color);
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .neon-button:hover {
+        background-color: #3182ce;
+    }
+    .neon-text {
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .hidden {
+        display: none;
+    }
+    #rankDisplay {
+        display: inline-block;
+        font-size: 16px;
+        padding: 5px 10px;
+        background-color: #121212;
+        color: #ffffff;
+        border: 1px solid var(--neon-color);
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const connectWalletBtn = document.getElementById('connectWallet');
+    const walletStatusDisplay = document.getElementById('walletStatus');
+    const startMessage = document.getElementById('startMessage');
+    const rankDisplay = document.getElementById('rankDisplay');
+
+    const ethLogo = new Image();
+    ethLogo.src = '/static/ethereum-logo.png';
+
+    let bird = {x: 50, y: 120, width: 30, height: 30, gravity: 0.6, lift: -10, velocity: 0};
+    let pipes = [];
+    let pipeWidth = 25;
+    let pipeGap = 160;
+    let pipeSpeed = 2;
+    let score = 0;
+    let gameLoop;
+    let gameStarted = false;
+    let walletConnected = false;
+    let walletAddress = '';
+    let gameOverMessage = '';
+    let highScore = 0;
+
+    function drawGame() {
+        clearCanvas();
+        moveBird();
+        movePipes();
+        checkCollision();
+        drawBird();
+        drawPipes();
+        updateScore();
+        if (gameOverMessage) {
+            drawGameOverMessage();
+        }
+    }
+
+    function clearCanvas() {
+        ctx.fillStyle = '#1E1E1E';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawBird() {
+        ctx.drawImage(ethLogo, bird.x, bird.y, bird.width, bird.height);
+    }
+
+    function moveBird() {
+        bird.velocity += bird.gravity;
+        bird.y += bird.velocity;
+
+        if (bird.y + bird.height > canvas.height) {
+            bird.y = canvas.height - bird.height;
+            gameOver();
+        }
+        if (bird.y < 0) {
+            bird.y = 0;
+            gameOver();
+        }
+    }
+
+    function movePipes() {
+        if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+            const pipeY = Math.random() * (canvas.height - pipeGap);
+            pipes.push({x: canvas.width, y: pipeY});
+        }
+
+        pipes.forEach(pipe => {
+            pipe.x -= pipeSpeed;
+        });
+
+        pipes = pipes.filter(pipe => pipe.x + pipeWidth > 0);
+    }
+
+    function drawPipes() {
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
+        pipes.forEach(pipe => {
+            ctx.fillRect(pipe.x, 0, pipeWidth, pipe.y);
+            ctx.fillRect(pipe.x, pipe.y + pipeGap, pipeWidth, canvas.height - pipe.y - pipeGap);
+        });
+    }
+
+    function checkCollision() {
+        pipes.forEach(pipe => {
+            if (bird.x + bird.width > pipe.x && bird.x < pipe.x + pipeWidth) {
+                if (bird.y < pipe.y || bird.y + bird.height > pipe.y + pipeGap) {
+                    gameOver();
+                }
+            }
+        });
+    }
+
+    function gameOver() {
+        clearInterval(gameLoop);
+        gameStarted = false;
+        gameOverMessage = 'Game Over! Your score: ' + score;
+        drawGameOverMessage();
+        if (walletConnected) {
+            submitScore(walletAddress, score);
+        } else {
+            console.log('Wallet not connected, score not submitted');
+        }
+    }
+
+    function drawGameOverMessage() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = '30px Arial';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
+        ctx.textAlign = 'center';
+        ctx.fillText(gameOverMessage, canvas.width / 2, canvas.height / 2);
+        
+        ctx.font = '20px Arial';
+        ctx.fillText('Press Space to play again', canvas.width / 2, canvas.height / 2 + 40);
+    }
+
+    function updateScore() {
+        score++;
+        scoreElement.textContent = 'Score: ' + score;
+    }
+
+    function startGame() {
+        if (!walletConnected) {
+            alert('Please connect your wallet first!');
+            return;
+        }
+        bird.y = 150;
+        bird.velocity = 0;
+        pipes = [];
+        score = 0;
+        gameStarted = true;
+        gameOverMessage = '';
+        startMessage.classList.add('hidden');
+        gameLoop = setInterval(drawGame, 20);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            if (gameStarted) {
+                bird.velocity = bird.lift;
+            } else if (walletConnected) {
+                startGame();
+            }
+        }
+    });
+
+    async function connectWallet() {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                walletAddress = accounts[0];
+                walletStatusDisplay.textContent = `Connected: ${walletAddress}`;
+                connectWalletBtn.style.display = 'none';
+                walletConnected = true;
+                startMessage.classList.remove('hidden');
+                await fetchRank(walletAddress);  // Fetch rank after connecting wallet
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                walletStatusDisplay.textContent = 'Error connecting wallet. Please try again.';
+            }
+        } else {
+            walletStatusDisplay.textContent = 'MetaMask is not installed. Please install it to connect your wallet.';
+        }
+    }
+
+    async function submitScore(address, score) {
+        try {
+            console.log('Submitting score:', { address, score });
+
+            // Retrieve CSRF token explicitly
+            const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            const response = await fetch('/flappybirds/submit_flappy_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token // Use the retrieved csrf_token
+                },
+                body: JSON.stringify({
+                    wallet_address: address,
+                    score: score,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                console.log('Score submitted successfully');
+                await fetchRank(address);
+            } else {
+                console.error('Failed to submit score:', result.message);
+            }
+        } catch (error) {
+            console.error('Error submitting score:', error);
+        }
+    }
+
+
+    async function fetchRank(address) {
+        try {
+            console.log('Fetching rank for address:', address);
+            const response = await fetch(`/flappybirds/get_flappy_rank/${address}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                console.log('Rank fetched successfully:', data.rank);
+                displayRank(data.rank);
+            } else {
+                console.error('Failed to get rank:', data.message);
+            }
+        } catch (error) {
+            console.error('Error getting rank:', error);
+        }
+    }
+
+    function displayRank(rank) {
+        rankDisplay.textContent = `Rank: ${rank}`;
+        rankDisplay.classList.remove('hidden');
+    }
+
+    connectWalletBtn.addEventListener('click', connectWallet);
+
+    // Initial setup
+    clearCanvas();
+    drawBird();
+</script>
+{% endblock %}

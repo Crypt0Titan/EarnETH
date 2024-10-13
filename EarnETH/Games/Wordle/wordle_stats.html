@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6 text-white">Ranked Block Word Scores</h1>
+
+<div class="mt-6">
+    <h2 class="text-2xl font-bold mb-4 text-white">Add Daily Words</h2>
+    <form action="{{ url_for('wordle.add_daily_words') }}" method="POST" class="space-y-4">
+        {{ form.hidden_tag() }}  <!-- CSRF token for protection -->
+        {% for i in range(10) %}
+        <input type="text" name="word{{ i }}" maxlength="5" placeholder="Word {{ i + 1 }}" class="p-2 rounded text-black">
+        {% endfor %}
+        <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Add Words</button>
+    </form>
+</div>
+
+<!-- Display the current daily words in a horizontal line -->
+<div class="mt-10 mb-10">
+    <h2 class="text-2xl font-bold mb-4 text-white">Current Daily Words</h2>
+    <p class="text-white text-lg">
+        {% for word in daily_words %}
+            {{ word.word }}{% if not loop.last %} | {% endif %}
+        {% endfor %}
+    </p>
+</div>
+
+<div class="overflow-x-auto mt-10">
+    <table class="w-full bg-gray-800 shadow-md rounded">
+        <thead>
+            <tr class="bg-gray-700 text-gray-200 uppercase text-sm leading-normal">
+                <th class="py-3 px-6 text-left">Rank</th>
+                <th class="py-3 px-6 text-left">Ethereum Address</th>
+                <th class="py-3 px-6 text-left">Total Score</th>
+                <th class="py-3 px-6 text-left">Games Played</th>
+                <th class="py-3 px-6 text-left">Sessions Played</th> <!-- New column -->
+            </tr>
+        </thead>
+        <tbody class="text-gray-300 text-sm font-light">
+            {% for player in players %}
+            <tr class="border-b border-gray-700 hover:bg-gray-600">
+                <td class="py-3 px-6 text-left">{{ loop.index }}</td>
+                <td class="py-3 px-6 text-left">{{ player.ethereum_address }}</td>
+                <td class="py-3 px-6 text-left">{{ player.total_score }}</td>
+                <td class="py-3 px-6 text-left">{{ player.games_played }}</td>
+                <td class="py-3 px-6 text-left">{{ player.sessions_played }}</td> <!-- Show session data -->
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+
+<div class="mt-6 flex space-x-4">
+    <a href="{{ url_for('main.admin_main') }}" class="inline-block bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Back to Dashboard</a>
+
+    <form action="{{ url_for('wordle.reset_wordle_scores') }}" method="POST" onsubmit="return confirm('Are you sure you want to reset all Wordle scores to zero? This action cannot be undone.');">
+        {{ form.hidden_tag() }}
+        <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Reset All Scores</button>
+    </form>
+
+    <form action="{{ url_for('wordle.reset_daily_words') }}" method="POST" onsubmit="return confirm('Are you sure you want to reset all daily words? This action cannot be undone.');">
+        {{ form.hidden_tag() }}
+        <button type="submit" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Reset Daily Words</button>
+    </form>
+</div>
+{% endblock %}

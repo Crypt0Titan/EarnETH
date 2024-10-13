@@ -1,0 +1,389 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="futuristic-container">
+    <h1 class="text-5xl font-bold text-center text-white mb-4">Snek</h1>
+    <h2 class="text-3xl font-bold text-center neon-text mb-6">Eat ETH to Earn $ETH!</h2>
+    
+    <div id="rankDisplay" class="hidden neon-button mb-8">Rank: --</div>
+    
+    <div class="game-wrapper">
+        <div id="gameContainer">
+            <div id="canvasWrapper">
+                <canvas id="gameCanvas" width="624" height="520"></canvas>
+                <div id="startMessage" class="hidden">Press Space to Start</div>
+            </div>
+            <div id="score" class="mt-4 text-2xl neon-text">Score: 0</div>
+            <button id="connectWallet" class="mt-4 neon-button">Connect Wallet</button>
+            <p id="walletStatus" class="mt-2 text-white"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #121212;
+    }
+    .futuristic-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .game-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+    #canvasWrapper {
+        position: relative;
+        display: inline-block;
+    }
+    #gameCanvas {
+        border: 2px solid var(--neon-color);
+        background-color: #1E1E1E;
+    }
+    #startMessage {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .neon-button {
+        font-size: 18px;
+        padding: 10px 20px;
+        background-color: var(--neon-color);
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .neon-button:hover {
+        background-color: #3182ce;
+    }
+    .neon-text {
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .hidden {
+        display: none;
+    }
+    #rankDisplay {
+        display: inline-block;
+        font-size: 16px;
+        padding: 5px 10px;
+        background-color: #121212;
+        color: #ffffff;
+        border: 1px solid var(--neon-color);
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const connectWalletBtn = document.getElementById('connectWallet');
+    const walletStatusDisplay = document.getElementById('walletStatus');
+    const startMessage = document.getElementById('startMessage');
+    const rankDisplay = document.getElementById('rankDisplay');
+
+    const gridSize = 20;
+    const tileCount = {
+        x: Math.floor(canvas.width / gridSize),
+        y: Math.floor(canvas.height / gridSize)
+    };
+    let snake = [{x: Math.floor(tileCount.x/2), y: Math.floor(tileCount.y/2)}];
+    let food = {x: 15, y: 15};
+    let dx = 0;
+    let dy = 0;
+    let score = 0;
+    let gameLoop;
+    let walletConnected = false;
+    let walletAddress = '';
+    let gameStarted = false;
+    let gameOverMessage = '';
+    let gameSpeed = 100; // milliseconds between each frame
+    let badFood = null;
+    let badFoodTimer = null;
+
+    const ethLogo = new Image();
+    ethLogo.src = '/static/ethereum-logo.png';
+
+    const btcLogo = new Image();
+    btcLogo.src = '/static/BTC LOGO NEW.png';
+
+    function drawGame() {
+        clearCanvas();
+        moveSnake();
+        drawSnake();
+        drawFood();
+        checkCollision();
+        updateScore();
+        if (gameOverMessage) {
+            drawGameOverMessage();
+        }
+    }
+
+    function clearCanvas() {
+        ctx.fillStyle = '#1E1E1E';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function moveSnake() {
+        const head = {
+            x: (snake[0].x + dx + tileCount.x) % tileCount.x,
+            y: (snake[0].y + dy + tileCount.y) % tileCount.y
+        };
+        snake.unshift(head);
+
+        if (head.x === food.x && head.y === food.y) {
+            score++;
+            updateSpeed();
+            generateFood();
+            if (!badFood && Math.random() < 0.2) {
+                generateBadFood();
+            }
+        } else if (badFood && head.x === badFood.x && head.y === badFood.y) {
+            score = Math.max(0, score - 1);
+            clearTimeout(badFoodTimer);
+            badFood = null;
+        } else {
+            snake.pop();
+        }
+    }
+
+    function drawSnake() {
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
+        snake.forEach(segment => {
+            ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+        });
+    }
+
+    function drawFood() {
+        ctx.drawImage(ethLogo, food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+        if (badFood) {
+            ctx.drawImage(btcLogo, badFood.x * gridSize, badFood.y * gridSize, gridSize, gridSize);
+        }
+    }
+
+    function generateFood() {
+        do {
+            food = {
+                x: Math.floor(Math.random() * tileCount.x),
+                y: Math.floor(Math.random() * tileCount.y)
+            };
+        } while (
+            snake.some(segment => segment.x === food.x && segment.y === food.y) ||
+            (badFood && badFood.x === food.x && badFood.y === food.y)
+        );
+    }
+
+    function generateBadFood() {
+        clearTimeout(badFoodTimer);
+        do {
+            badFood = {
+                x: Math.floor(Math.random() * tileCount.x),
+                y: Math.floor(Math.random() * tileCount.y)
+            };
+        } while (
+            snake.some(segment => segment.x === badFood.x && segment.y === badFood.y) ||
+            (food.x === badFood.x && food.y === badFood.y)
+        );
+
+        badFoodTimer = setTimeout(() => {
+            badFood = null;
+        }, 5000);
+    }
+
+    function checkCollision() {
+        const head = snake[0];
+        for (let i = 1; i < snake.length; i++) {
+            if (head.x === snake[i].x && head.y === snake[i].y) {
+                gameOver();
+            }
+        }
+    }
+
+    function updateScore() {
+        scoreElement.textContent = `Score: ${score}`;
+    }
+
+    function updateSpeed() {
+        if (score === 25) gameSpeed *= 0.95;
+        else if (score === 50) gameSpeed *= 0.95;
+        else if (score === 100) gameSpeed *= 0.95;
+        else if (score === 150) gameSpeed *= 0.97;
+        else if (score === 200) gameSpeed *= 0.97;
+
+        clearInterval(gameLoop);
+        gameLoop = setInterval(drawGame, gameSpeed);
+    }
+
+    function drawGameOverMessage() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.font = '30px Arial';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
+        ctx.textAlign = 'center';
+        ctx.fillText(gameOverMessage, canvas.width / 2, canvas.height / 2);
+
+        ctx.font = '20px Arial';
+        ctx.fillText('Press Space to play again', canvas.width / 2, canvas.height / 2 + 40);
+    }
+
+    function gameOver() {
+        clearInterval(gameLoop);
+        clearTimeout(badFoodTimer);
+        gameStarted = false;
+        gameOverMessage = 'Game Over! Your score: ' + score;
+        drawGameOverMessage();
+        submitScore(walletAddress, score);
+    }
+
+    function startGame() {
+        if (!walletConnected) {
+            alert('Please connect your wallet first!');
+            return;
+        }
+        snake = [{x: Math.floor(tileCount.x/2), y: Math.floor(tileCount.y/2)}];
+        generateFood();
+        dx = 1;
+        dy = 0;
+        score = 0;
+        gameSpeed = 100;
+        gameStarted = true;
+        gameOverMessage = '';
+        badFood = null;
+        clearTimeout(badFoodTimer);
+        startMessage.classList.add('hidden');
+        gameLoop = setInterval(drawGame, gameSpeed);
+    }
+
+    function restartGame() {
+        snake = [{x: Math.floor(tileCount.x/2), y: Math.floor(tileCount.y/2)}];
+        generateFood();
+        dx = 1;
+        dy = 0;
+        score = 0;
+        gameSpeed = 100;
+        gameStarted = true;
+        gameOverMessage = '';
+        badFood = null;
+        clearTimeout(badFoodTimer);
+        gameLoop = setInterval(drawGame, gameSpeed);
+    }
+
+    async function submitScore(walletAddress, score) {
+        try {
+            const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch('/snake/submit_snake_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token // Make sure csrf_token is defined globally
+                },
+                body: JSON.stringify({
+                    wallet_address: walletAddress,
+                    score: score,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                console.log('Score submitted successfully');
+                const newRank = await getPlayerRank(walletAddress);
+                updateRankDisplay(newRank);
+            } else {
+                console.error('Failed to submit score:', result.message);
+            }
+        } catch (error) {
+            console.error('Error submitting score:', error);
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            if (!gameStarted && walletConnected) {
+                if (gameOverMessage) {
+                    restartGame();
+                } else {
+                    startGame();
+                }
+            }
+        } else if (gameStarted) {
+            switch(e.key) {
+                case 'ArrowUp': if (dy === 0) { dx = 0; dy = -1; } break;
+                case 'ArrowDown': if (dy === 0) { dx = 0; dy = 1; } break;
+                case 'ArrowLeft': if (dx === 0) { dx = -1; dy = 0; } break;
+                case 'ArrowRight': if (dx === 0) { dx = 1; dy = 0; } break;
+            }
+        }
+    });
+
+    async function getPlayerRank(address) {
+        try {
+            const response = await fetch(`/snake/get_player_rank/${address}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.success) {
+                return data.rank;
+            } else {
+                console.error('Failed to get rank:', data.message);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error getting rank:', error);
+            return null;
+        }
+    }
+
+    function updateRankDisplay(rank) {
+        if (rank) {
+            rankDisplay.textContent = `Rank: ${rank}`;
+            rankDisplay.classList.remove('hidden');
+        } else {
+            rankDisplay.classList.add('hidden');
+        }
+    }
+
+    async function connectWallet() {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                walletAddress = accounts[0];
+                walletStatusDisplay.textContent = `Connected: ${walletAddress}`;
+                connectWalletBtn.style.display = 'none';
+                walletConnected = true;
+                startMessage.classList.remove('hidden');
+                const rank = await getPlayerRank(walletAddress);
+                updateRankDisplay(rank);
+            } catch (error) {
+                walletStatusDisplay.textContent = 'Error connecting wallet. Please try again.';
+            }
+        } else {
+            walletStatusDisplay.textContent = 'MetaMask is not installed. Please install it to connect your wallet.';
+        }
+    }
+
+    connectWalletBtn.addEventListener('click', connectWallet);
+
+    // Initial setup
+    clearCanvas();
+    drawSnake();
+    drawFood();
+</script>
+{% endblock %}

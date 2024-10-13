@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block extra_css %}
+<style>
+    .neon-text {
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .neon-color {
+        color: var(--neon-color);
+    }
+    .game-card {
+        background-color: rgba(0, 255, 255, 0.1);
+        border: 2px solid var(--neon-color);
+        border-radius: 10px;
+        padding: 1.6rem;
+        width: 240px; /* Reduced size */
+        text-align: center;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .game-card:hover {
+        box-shadow: 0 0 15px var(--neon-color), 0 0 30px var(--neon-color);
+    }
+    .game-title {
+        font-weight: bold;
+        color: white;
+        font-size: 1rem; /* Reduced font size to match the container */
+    }
+    .disabled-card {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="neon-divider"></div>
+
+<h2 class="text-4xl font-bold text-center neon-text mt-12 mb-8">Admin</h2>
+
+<div class="flex justify-center space-x-8">
+    <!-- Snake Stats link -->
+    <a href="{{ url_for('snake.snake_stats') }}" class="game-card">
+        <div class="game-info">
+            <h3 class="game-title">Snake</h3>
+        </div>
+    </a>
+
+    <!-- Flappy ETH -->
+    <a href="{{ url_for('flappybirds.flappy_birds_stats') }}" class="game-card">
+        <div class="game-info">
+            <h3 class="game-title">Flappy ETH</h3>
+        </div>
+    </a>
+
+    <!-- Wordle link -->
+    <a href="{{ url_for('wordle.wordle_stats') }}" class="game-card">
+        <div class="game-info">
+            <h3 class="game-title">Block Word</h3>
+        </div>
+    </a>
+</div>
+
+{% endblock %}

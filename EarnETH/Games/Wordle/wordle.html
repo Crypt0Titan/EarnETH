@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="text-5xl font-bold text-center text-white mb-4">Block Word</h1>
+<h2 class="text-3xl font-bold text-center neon-text mb-6">Just like Wordle - Guess the Words to Earn $ETH</h2>
+<div class="game-container">
+    <div id="rankDisplay" class="neon-button mb-4">Rank: --</div>
+    <div id="remainingGames" class="neon-button mb-4">Remaining Games: 10</div>
+    <div id="grid" class="grid grid-cols-5 gap-2 mb-4">
+        <!-- Wordle grid will be generated here -->
+    </div>
+    <input type="text" id="guessInput" class="guess-input answer-input mt-4 p-2 rounded-lg shadow-md text-black text-center disabled" maxlength="5" placeholder="Enter your guess" style="width: 20%;" disabled />
+    <button id="submitGuess" class="neon-button mt-4 disabled" disabled>Submit Guess</button>
+    <p id="score" class="text-white mt-4">Score: 0</p>
+    <p id="totalScore" class="text-white mt-2">Total Score: 0</p>
+    <p id="message" class="text-white mt-4"></p>
+
+    <button id="connectWallet" class="neon-button mt-4">Connect Wallet</button>
+    <button id="playAgain" class="neon-button mt-4" style="display: none;">Play Again</button>
+    <p id="walletStatus" class="mt-2 text-white"></p>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+        margin-bottom: 20px;
+    }
+    .cell {
+        width: 60px;
+        height: 60px;
+        background-color: #1E1E1E;
+        border: 2px solid var(--neon-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2rem;
+        color: var(--neon-color);
+    }
+    .guess-input, .neon-button {
+        transition: all 0.3s ease;
+    }
+    .guess-input.disabled, .neon-button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .guess-input:not(.disabled):hover, .neon-button:not(.disabled):hover {
+        box-shadow: 0 0 10px var(--neon-color);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let dailyWords = [];
+    let currentWordIndex = 0;
+    let randomWord = '';
+    const grid = document.getElementById('grid');
+    const guessInput = document.getElementById('guessInput');
+    const submitGuess = document.getElementById('submitGuess');
+    const message = document.getElementById('message');
+    const scoreElement = document.getElementById('score');
+    const totalScoreElement = document.getElementById('totalScore');
+    const connectWalletBtn = document.getElementById('connectWallet');
+    const playAgainBtn = document.getElementById('playAgain');
+    const walletStatusDisplay = document.getElementById('walletStatus');
+    const rankDisplay = document.getElementById('rankDisplay');
+    const remainingGamesDisplay = document.getElementById('remainingGames');
+    let walletAddress = '';
+    let attemptCount = 0;
+    let score = 0;
+    let totalScore = 0;
+    let remainingGames = 10;
+
+    async function fetchDailyWords() {
+        if (!walletAddress) {
+            console.error('Wallet not connected');
+            return;
+        }
+        try {
+            const response = await fetch(`/wordle/get_daily_words?wallet_address=${walletAddress}`);
+            const data = await response.json();
+            if (data.success) {
+                dailyWords = data.words;
+                remainingGames = data.remaining_games;
+                updateRemainingGamesDisplay();
+                if (remainingGames > 0) {
+                    randomWord = dailyWords[currentWordIndex];
+                    console.log("Current word:", randomWord); // For debugging, remove in production
+                    playAgainBtn.style.display = 'none';
+                    enableGameControls();
+                } else {
+                    message.textContent = 'You have played all available games for today. Please come back tomorrow!';
+                    disableGameControls();
+                }
+            } else {
+                console.error('Error fetching daily words:', data.message);
+                message.textContent = data.message;
+                disableGameControls();
+            }
+        } catch (error) {
+            console.error('Error fetching daily words:', error);
+        }
+    }
+
+    function updateRemainingGamesDisplay() {
+        remainingGamesDisplay.textContent = `Remaining Games: ${remainingGames}`;
+    }
+
+    function enableGameControls() {
+        guessInput.disabled = false;
+        submitGuess.disabled = false;
+        guessInput.classList.remove('disabled');
+        submitGuess.classList.remove('disabled');
+    }
+
+    function disableGameControls() {
+        guessInput.disabled = true;
+        submitGuess.disabled = true;
+        guessInput.classList.add('disabled');
+        submitGuess.classList.add('disabled');
+    }
+
+    function initializeGame() {
+        if (remainingGames <= 0 || dailyWords.length === 0) {
+            message.textContent = 'No more games available for today. Please come back tomorrow!';
+            disableGameControls();
+            playAgainBtn.style.display = 'none';
+            return;
+        }
+
+        randomWord = dailyWords[currentWordIndex];
+        console.log("Current word:", randomWord); // For debugging, remove in production
+        attemptCount = 0;
+        score = 0;
+        message.textContent = '';
+        scoreElement.textContent = 'Score: 0';
+        rankDisplay.textContent = 'Rank: --';
+        guessInput.value = '';
+        playAgainBtn.style.display = 'none';
+        updateRemainingGamesDisplay();
+
+        if (walletAddress) {
+            enableGameControls();
+        } else {
+            disableGameControls();
+        }
+
+        // Clear and recreate the grid
+        grid.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                grid.appendChild(cell);
+            }
+        }
+    }
+
+    function handleGuess() {
+        const guess = guessInput.value.toLowerCase();
+        if (guess.length !== 5) {
+            return;
+        }
+        checkGuess(guess);
+        guessInput.value = '';
+    }
+
+    function checkGuess(guess) {
+        const guessCells = document.querySelectorAll('.cell');
+        const guessRowIndex = attemptCount;
+        const startIndex = guessRowIndex * 5;
+
+        for (let i = 0; i < 5; i++) {
+            guessCells[startIndex + i].textContent = guess[i];
+        }
+
+        let correctCount = 0;
+        const wordArray = randomWord.split('');
+        const guessArray = guess.split('');
+
+        guessArray.forEach((letter, index) => {
+            const cellIndex = startIndex + index;
+            if (letter === wordArray[index]) {
+                guessCells[cellIndex].style.backgroundColor = 'green';
+                wordArray[index] = null;
+                guessArray[index] = null;
+                correctCount++;
+            }
+        });
+
+        guessArray.forEach((letter, index) => {
+            const cellIndex = startIndex + index;
+            if (letter !== null) {
+                const wordIndex = wordArray.indexOf(letter);
+                if (wordIndex !== -1) {
+                    guessCells[cellIndex].style.backgroundColor = 'yellow';
+                    wordArray[wordIndex] = null;
+                } else {
+                    guessCells[cellIndex].style.backgroundColor = 'gray';
+                }
+            }
+        });
+
+        attemptCount++;
+
+        if (correctCount === 5) {
+            score += 60 - (attemptCount - 1) * 10;
+        }
+
+        if (correctCount === 5 || attemptCount === 5) {
+            totalScore += score;
+            message.textContent = correctCount === 5 ? 
+                `Congratulations! You guessed the word! Score: ${score}` :
+                `Game over! The word was: ${randomWord}. Score: ${score}`;
+            disableGameControls();
+            submitScore(score);
+            currentWordIndex++;
+            remainingGames--;
+            updateRemainingGamesDisplay();
+            if (remainingGames > 0) {
+                playAgainBtn.style.display = 'block';
+            } else {
+                message.textContent += ' You have played all available games for today. Please come back tomorrow!';
+            }
+        }
+
+        scoreElement.textContent = `Score: ${score}`;
+        totalScoreElement.textContent = `Total Score: ${totalScore}`;
+        rankDisplay.textContent = `Rank: ${attemptCount}`;
+    }
+
+    async function submitScore(score) {
+        if (!walletAddress) {
+            console.error('Wallet not connected');
+            return;
+        }
+        try {
+            // Retrieve CSRF token explicitly
+            const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            console.log('CSRF Token:', csrf_token);  // Debugging CSRF token
+            console.log('Submitting score:', { walletAddress, score });  // Debugging score submission
+
+            const response = await fetch('/wordle/submit_wordle_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token  // Use the retrieved csrf_token
+                },
+                body: JSON.stringify({
+                    wallet_address: walletAddress,
+                    score: score
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                console.log('Score submitted successfully');
+                rankDisplay.textContent = `Rank: ${data.rank}`;
+                remainingGames = data.remaining_games;
+                updateRemainingGamesDisplay();
+            } else {
+                console.error('Error submitting score:', data.message);
+                message.textContent = data.message;
+            }
+        } catch (error) {
+            console.error('Error submitting score:', error);
+        }
+    }
+
+
+    async function connectWallet() {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                walletAddress = accounts[0];
+                walletStatusDisplay.textContent = `Connected: ${walletAddress}`;
+                connectWalletBtn.style.display = 'none';
+                await fetchDailyWords();
+                initializeGame();
+            } catch (error) {
+                console.error('Failed to connect wallet:', error);
+                walletStatusDisplay.textContent = 'Error connecting wallet. Please try again.';
+            }
+        } else {
+            walletStatusDisplay.textContent = 'MetaMask is not installed. Please install it to connect your wallet.';
+        }
+    }
+
+    submitGuess.addEventListener('click', handleGuess);
+    guessInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            handleGuess();
+        }
+    });
+    connectWalletBtn.addEventListener('click', connectWallet);
+    playAgainBtn.addEventListener('click', initializeGame);
+
+    // Initialize the game when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        connectWalletBtn.style.display = 'block';
+        disableGameControls();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="futuristic-container">
+    <h1 class="text-5xl font-bold text-center text-white mb-4">Earn ETH $ERNETH</h1>
+    <h2 class="text-3xl font-bold text-center neon-text mb-6">Bringing Crypto to Everyone - One Game at a Time</h2>
+    <p class="text-xl text-center text-gray-300 mb-8 max-w-3xl mx-auto">
+        We create simple and fun games designed for everyone, so we can bring in as many people as possible to the world of crypto. Our mission will be a success when even your grandma can earn through our games. Join us, play, and start earning Ethereum today!
+    </p>
+
+    <div class="neon-divider"></div>
+
+    <h2 class="text-4xl font-bold text-center neon-text mt-12 ">Start Earning!</h2>
+    <div class="game-carousel-container relative">
+        <button id="scrollLeft" class="scroll-button left-0 hidden">
+            <i class="fas fa-chevron-left text-4xl neon-text"></i>
+        </button>
+
+        <div class="game-carousel overflow-hidden">
+            <div class="game-list flex transition-transform duration-300">
+                <div class="game-item flex-none w-full">
+                    <a href="{{ url_for('snake.snake_home') }}" class="game-card mx-auto">
+                        <div class="game-info">
+                            <h3 class="game-title">Snek</h3>
+                        </div>
+                    </a>
+                    <p class="text-center text-gray-300 mt-4 max-w-md mx-auto">
+                        The crypto version of our favorite Snake game. The more $ETH you eat, the more you earn. Make your way up to the top of the leaderboard to be eligible for rewards.
+                    </p>
+                </div>
+                <div class="game-item flex-none w-full">
+                    <a href="{{ url_for('flappybirds.flappybirds_home') }}" class="game-card mx-auto">
+                        <div class="game-info">
+                            <h3 class="game-title">Flappy ETH</h3>
+                        </div>
+                    </a>
+                    <p class="text-center text-gray-300 mt-4 max-w-md mx-auto">
+                        Fly your Ethereum through the block(chain). The longer you survive, the more you earn.
+                    </p>
+                </div>
+                <div class="game-item flex-none w-full">
+                    <a href="{{ url_for('wordle.wordle_home') }}" class="game-card mx-auto">
+                        <div class="game-info">
+                            <h3 class="game-title">Block Word</h3>
+                        </div>
+                    </a>
+                    <p class="text-center text-gray-300 mt-4 max-w-md mx-auto">
+                        The crypto version of Wordle - Guess the 5-letter word in 6 tries. Each guess will provide feedback on the letters.
+                    </p>
+                </div>
+                <div class="game-item flex-none w-full">
+                    <a href="{{ url_for('tic_tac_toe.tictactoe_home') }}" class="game-card mx-auto">
+                        <div class="game-info">
+                            <h3 class="game-title">Tic Tac Toe</h3>
+                        </div>
+                    </a>
+                    <p class="text-center text-gray-300 mt-4 max-w-md mx-auto">
+                        Classic 1v1 Tic Tac Toe. Beat as many players as you can to reach the leaderboard and earn ETH.
+                    </p>
+                </div>
+                <div class="game-item flex-none w-full">
+                    <div class="game-card game-card-disabled mx-auto">
+                        <div class="game-info">
+                            <h3 class="game-title">Vitalik Jump (Coming Soon)</h3>
+                        </div>
+                    </div>
+                    <p class="text-center text-gray-300 mt-4 max-w-md mx-auto">
+                        Vitalik wasn't able to keep his girl because he's too busy with crypto. Help Vitalik jump over the obstacles so he can find a new girlfriend.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <button id="scrollRight" class="scroll-button right-0">
+            <i class="fas fa-chevron-right text-4xl neon-text"></i>
+        </button>
+    </div>
+
+    <style>
+        .game-carousel-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding-top: 10px;
+        }
+        .game-carousel {
+            width: 100%;
+        }
+        .game-list {
+            display: flex;
+            transition: transform 0.3s ease;
+        }
+        .game-item {
+            width: 100%;
+            padding-top: 40px;
+        }
+        .game-card {
+            background-color: rgba(0, 255, 255, 0.1);
+            border: 2px solid var(--neon-color);
+            border-radius: 10px;
+            padding: 1.6rem;
+            width: 240px;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .game-card:hover {
+            box-shadow: 0 0 10px var(--neon-color), 0 0 20px var(--neon-color);
+        }
+        .game-title {
+            font-weight: bold;
+            color: white;
+            font-size: 1.2rem;
+        }
+        .scroll-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            z-index: 10;
+            padding: 10px;
+        }
+        .scroll-button:focus {
+            outline: none;
+        }
+        .scroll-button.hidden {
+            display: none;
+        }
+        #scrollLeft {
+            left: -40px;
+        }
+        #scrollRight {
+            right: -40px;
+        }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const gameList = document.querySelector('.game-list');
+        const scrollLeftBtn = document.getElementById('scrollLeft');
+        const scrollRightBtn = document.getElementById('scrollRight');
+        let currentIndex = 0;
+        const totalItems = document.querySelectorAll('.game-item').length;
+
+        function updateButtonVisibility() {
+            scrollLeftBtn.classList.toggle('hidden', currentIndex === 0);
+            scrollRightBtn.classList.toggle('hidden', currentIndex === totalItems - 1);
+        }
+
+        function scrollToIndex(index) {
+            gameList.style.transform = `translateX(-${index * 100}%)`;
+            currentIndex = index;
+            updateButtonVisibility();
+        }
+
+        scrollLeftBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                scrollToIndex(currentIndex - 1);
+            }
+        });
+
+        scrollRightBtn.addEventListener('click', () => {
+            if (currentIndex < totalItems - 1) {
+                scrollToIndex(currentIndex + 1);
+            }
+        });
+
+        updateButtonVisibility();
+    });
+    </script>
+
+    <div class="neon-divider mt-12"></div>
+    
+    <h2 class="text-4xl font-bold text-center neon-text mt-12 mb-8">Tokenomics</h2>
+    <div class="tokenomics-table mx-auto" style="width: 60%;">
+        <table class="w-full mb-4 table-shadow">
+            <tr>
+                <th colspan="2" class="neon-color bg-theme text-center py-2 text-xl">Token Information</th>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Name</th>
+                <td class="w-1/2 text-left">Earn ETH</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Ticker</th>
+                <td class="w-1/2 text-left">$ERNETH</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Contract Address</th>
+                <td class="w-1/2 text-left">x1023xeeg10283lfj12</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Total Supply</th>
+                <td class="w-1/2 text-left">5,000,000 tokens</td>
+            </tr>
+        </table>
+        <table class="w-full mb-4 table-shadow">
+            <tr>
+                <th colspan="2" class="neon-color bg-theme text-center py-2 text-xl">Token Distribution</th>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Liquidity</th>
+                <td class="w-1/2 text-left">4,000,000 tokens (80%)</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Team Wallet</th>
+                <td class="w-1/2 text-left">750,000 tokens (15%)</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Rewards Reserve</th>
+                <td class="w-1/2 text-left">250,000 (5%)</td>
+            </tr>
+        </table>
+        <table class="w-full table-shadow">
+            <tr>
+                <th colspan="2" class="neon-color bg-theme text-center py-2 text-xl">Fees</th>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Buy fee</th>
+                <td class="w-1/2 text-left">1.5%</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Sell fee</th>
+                <td class="w-1/2 text-left">1.5%</td>
+            </tr>
+            <tr>
+                <th class="w-1/2 text-center">Fee Distribution</th>
+                <td class="w-1/2 text-left">
+                    Revenue Wallet (30%)<br>
+                    Team Wallet (70%)
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="neon-divider mt-12"></div>
+
+    <h2 class="text-4xl font-bold text-center neon-text mt-12 mb-8">Roadmap</h2>
+    <div class="roadmap">
+        <!-- Insert SVG or image for roadmap here -->
+    </div>
+
+    <div class="neon-divider mt-12"></div>
+
+    <h2 class="text-4xl font-bold text-center neon-text mt-12 mb-8">Socials</h2>
+    <div class="flex justify-center space-x-8">
+        <a href="https://twitter.com/EarnETH" target="_blank" rel="noopener noreferrer" class="text-5xl text-white hover:text-blue-300">
+            <i class="fab fa-twitter"></i>
+        </a>
+        <a href="https://t.me/EarnETHOfficial" target="_blank" rel="noopener noreferrer" class="text-5xl text-white hover:text-blue-400">
+            <i class="fab fa-telegram"></i>
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .neon-text {
+        color: var(--neon-color);
+        text-shadow: 0 0 5px var(--neon-color);
+    }
+    .neon-color {
+        color: var(--neon-color);
+    }
+    .neon-divider {
+        height: 2px;
+        background: linear-gradient(90deg, rgba(0,255,255,0) 0%, var(--neon-color) 50%, rgba(0,255,255,0) 100%);
+        width: 50%;
+        margin: 2rem auto;
+    }
+
+    .game-card-disabled {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        cursor: not-allowed;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .game-card {
+        background-color: rgba(0, 255, 255, 0.1);
+        border: 2px solid var(--neon-color);
+        border-radius: 10px;
+        padding: 1.6rem;
+        width: 240px;
+        text-align: center;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .game-card:hover {
+        box-shadow: 0 0 15px var(--neon-color), 0 0 30px var(--neon-color);
+    }
+    .game-title {
+        font-weight: bold;
+        color: white;
+        font-size: 1.2rem;
+    }
+    .tokenomics-table table {
+        background-color: rgba(0, 255, 255, 0.1);
+        border: 2px solid var(--neon-color);
+        border-radius: 10px;
+        overflow: hidden;
+        table-layout: fixed;
+    }
+    .tokenomics-table th, .tokenomics-table td {
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        word-wrap: break-word;
+    }
+    .tokenomics-table th {
+        text-align: center;
+    }
+    .tokenomics-table td {
+        text-align: left;
+    }
+    .tokenomics-table tr:last-child th,
+    .tokenomics-table tr:last-child td {
+        border-bottom: none;
+    }
+    .bg-theme {
+        background-color: var(--bg-color);
+    }
+    .roadmap img {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+{% endblock %}
